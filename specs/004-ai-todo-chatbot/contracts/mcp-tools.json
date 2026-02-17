@@ -1,0 +1,228 @@
+{
+  "protocol": "mcp",
+  "version": "0.9.0",
+  "server": {
+    "name": "taskflow-mcp",
+    "description": "MCP server for TaskFlow AI todo management",
+    "transport": "stdio"
+  },
+  "tools": [
+    {
+      "name": "add_task",
+      "description": "Create a new task for the user",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "User ID from JWT token (required for isolation)"
+          },
+          "title": {
+            "type": "string",
+            "description": "Task title (required)",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional task description",
+            "maxLength": 1000
+          }
+        },
+        "required": ["user_id", "title"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "integer",
+            "description": "Unique task identifier"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "completed"],
+            "description": "Task completion status"
+          },
+          "title": {
+            "type": "string",
+            "description": "Task title"
+          },
+          "description": {
+            "type": "string",
+            "description": "Task description (may be null)"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Task creation timestamp"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last update timestamp"
+          }
+        }
+      }
+    },
+    {
+      "name": "list_tasks",
+      "description": "List all tasks for the user, optionally filtered by status",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "User ID from JWT token (required for isolation)"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["all", "pending", "completed"],
+            "description": "Filter by task status (default: all)"
+          }
+        },
+        "required": ["user_id"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "tasks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "task_id": {"type": "integer"},
+                "status": {"type": "string"},
+                "title": {"type": "string"},
+                "description": {"type": "string"},
+                "created_at": {"type": "string", "format": "date-time"},
+                "updated_at": {"type": "string", "format": "date-time"}
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "update_task",
+      "description": "Update task title and/or description",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "User ID from JWT token (required for isolation)"
+          },
+          "task_id": {
+            "type": "integer",
+            "description": "Task ID to update (required)"
+          },
+          "title": {
+            "type": "string",
+            "description": "New task title (optional)",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "description": "New task description (optional)",
+            "maxLength": 1000
+          }
+        },
+        "required": ["user_id", "task_id"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "task_id": {"type": "integer"},
+          "status": {"type": "string"},
+          "title": {"type": "string"},
+          "description": {"type": "string"},
+          "created_at": {"type": "string", "format": "date-time"},
+          "updated_at": {"type": "string", "format": "date-time"}
+        }
+      }
+    },
+    {
+      "name": "complete_task",
+      "description": "Mark a task as completed",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "User ID from JWT token (required for isolation)"
+          },
+          "task_id": {
+            "type": "integer",
+            "description": "Task ID to complete (required)"
+          }
+        },
+        "required": ["user_id", "task_id"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "task_id": {"type": "integer"},
+          "status": {"type": "string", "enum": ["completed"]},
+          "title": {"type": "string"},
+          "description": {"type": "string"},
+          "created_at": {"type": "string", "format": "date-time"},
+          "updated_at": {"type": "string", "format": "date-time"}
+        }
+      }
+    },
+    {
+      "name": "delete_task",
+      "description": "Delete a task permanently",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "User ID from JWT token (required for isolation)"
+          },
+          "task_id": {
+            "type": "integer",
+            "description": "Task ID to delete (required)"
+          }
+        },
+        "required": ["user_id", "task_id"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Deletion success status"
+          },
+          "message": {
+            "type": "string",
+            "description": "Confirmation message"
+          },
+          "task_id": {
+            "type": "integer",
+            "description": "Deleted task ID"
+          }
+        }
+      }
+    }
+  ],
+  "errorHandling": {
+    "taskNotFound": {
+      "code": "TASK_NOT_FOUND",
+      "message": "Task {task_id} not found or does not belong to user"
+    },
+    "invalidInput": {
+      "code": "INVALID_INPUT",
+      "message": "Invalid input parameters: {details}"
+    },
+    "databaseError": {
+      "code": "DATABASE_ERROR",
+      "message": "Database operation failed: {details}"
+    },
+    "unauthorized": {
+      "code": "UNAUTHORIZED",
+      "message": "User {user_id} does not own task {task_id}"
+    }
+  }
+}

@@ -1,0 +1,222 @@
+openapi: 3.0.0
+info:
+  title: AI Todo Chatbot API
+  version: 1.0.0
+  description: Chat endpoint for conversational task management using AI agent
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+
+paths:
+  /api/chat:
+    post:
+      summary: Send chat message to AI assistant
+      description: |
+        Processes user message with AI agent, executes MCP tools, and returns response.
+        Backend is stateless - loads conversation history from database on every request.
+      operationId: sendChatMessage
+      tags:
+        - Chat
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+            examples:
+              newConversation:
+                summary: Start new conversation
+                value:
+                  message: "Add a task to buy groceries"
+              existingConversation:
+                summary: Continue existing conversation
+                value:
+                  conversation_id: "550e8400-e29b-41d4-a716-446655440000"
+                  message: "Show me my tasks"
+      responses:
+        '200':
+          description: Successful response with AI assistant message
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+              examples:
+                taskCreated:
+                  summary: Task creation confirmed
+                  value:
+                    conversation_id: "550e8400-e29b-41d4-a716-446655440000"
+                    response: "✅ Task created: 'buy groceries' (ID: 42)"
+                    timestamp: "2026-02-13T10:30:00Z"
+                tasksList:
+                  summary: Tasks listed
+                  value:
+                    conversation_id: "550e8400-e29b-41d4-a716-446655440000"
+                    response: "You have 3 tasks:\n⏳ 42: buy groceries\n⏳ 43: call mom\n✅ 44: finish report"
+                    timestamp: "2026-02-13T10:31:00Z"
+        '400':
+          description: Bad request - invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Message cannot be empty"
+        '401':
+          description: Unauthorized - invalid or missing JWT token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Invalid authentication credentials"
+        '404':
+          description: Conversation not found or not owned by user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Conversation not found"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "An error occurred processing your request"
+
+  /api/chat/{conversation_id}:
+    get:
+      summary: Get conversation history
+      description: Retrieves all messages for a specific conversation
+      operationId: getConversationHistory
+      tags:
+        - Chat
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Conversation UUID
+      responses:
+        '200':
+          description: Conversation history retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationHistory'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Conversation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from Better Auth
+
+  schemas:
+    ChatRequest:
+      type: object
+      required:
+        - message
+      properties:
+        conversation_id:
+          type: string
+          format: uuid
+          description: Optional conversation ID to continue existing conversation
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        message:
+          type: string
+          minLength: 1
+          maxLength: 5000
+          description: User message in natural language
+          example: "Add a task to buy groceries"
+
+    ChatResponse:
+      type: object
+      required:
+        - conversation_id
+        - response
+        - timestamp
+      properties:
+        conversation_id:
+          type: string
+          format: uuid
+          description: Conversation ID (new or existing)
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        response:
+          type: string
+          description: AI assistant response in natural language
+          example: "✅ Task created: 'buy groceries' (ID: 42)"
+        timestamp:
+          type: string
+          format: date-time
+          description: Response timestamp in ISO 8601 format
+          example: "2026-02-13T10:30:00Z"
+
+    ConversationHistory:
+      type: object
+      required:
+        - conversation_id
+        - messages
+      properties:
+        conversation_id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+
+    Message:
+      type: object
+      required:
+        - role
+        - content
+        - created_at
+      properties:
+        role:
+          type: string
+          enum: [user, assistant]
+          description: Message sender
+          example: "user"
+        content:
+          type: string
+          description: Message text
+          example: "Add a task to buy groceries"
+        created_at:
+          type: string
+          format: date-time
+          description: Message timestamp
+          example: "2026-02-13T10:30:00Z"
+
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: Error message
+          example: "Invalid authentication credentials"
