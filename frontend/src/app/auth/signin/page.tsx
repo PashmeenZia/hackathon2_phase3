@@ -18,13 +18,10 @@ export default function SignInPage() {
     setIsLoading(true);
 
     try {
-      console.log('Attempting login with:', email);
       await login(email, password);
-      toast.success('Successfully signed in! Redirecting...');
-      // Router push is handled by AuthContext after successful login
+      toast.success('Successfully signed in!');
     } catch (error: any) {
-      console.error('Login error:', error);
-      toast.error(error.message || 'Sign in failed. Please check your credentials.');
+      toast.error(error.message || 'Sign in failed');
     } finally {
       setIsLoading(false);
     }
