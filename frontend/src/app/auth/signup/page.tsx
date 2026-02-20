@@ -19,10 +19,13 @@ export default function SignUpPage() {
     setIsLoading(true);
 
     try {
+      console.log('Attempting registration with:', { email, name });
       await register(email, password, name);
-      toast.success('Account created successfully!');
+      toast.success('Account created successfully! Redirecting...');
+      // Router push is handled by AuthContext after successful registration
     } catch (error: any) {
-      toast.error(error.message || 'Registration failed');
+      console.error('Registration error:', error);
+      toast.error(error.message || 'Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
